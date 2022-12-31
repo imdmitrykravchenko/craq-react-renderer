@@ -5,6 +5,8 @@ import ReactDOMServer from "react-dom/server";
 import { Context } from "craq";
 import { ServerContext } from "craq-server";
 
+import Wrapper from "./Wrapper";
+
 export declare type Chunks = Record<string, string[]>;
 export declare type RendererOptions = {
   rootNodeId?: string;
@@ -157,7 +159,11 @@ const renderer: Renderer = async <T>(context, App, { bundles, options }) => {
     context.ctx.res,
     renderBefore(context.head, options.rootNodeId || "root"),
     ReactDOMServer.renderToStaticNodeStream(
-      React.createElement(App, { context })
+      React.createElement(
+        Wrapper,
+        { context },
+        React.createElement(App, { context })
+      )
     ),
     renderAfter({ state, stats: context.stats })
   );

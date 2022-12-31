@@ -1,9 +1,8 @@
 import React, { ComponentType } from "react";
 import ReactDOM from "react-dom/client";
-import { Provider } from "react-redux";
-import { RouterProvider } from "router6-react";
 import { Context } from "craq";
-import { ComponentContextProvider } from "./context";
+
+import Wrapper from "./Wrapper";
 
 const renderer = <T extends unknown>(
   context: Context<T>,
@@ -12,13 +11,9 @@ const renderer = <T extends unknown>(
 ) =>
   ReactDOM.hydrateRoot(
     node,
-    <RouterProvider router={context.router}>
-      <ComponentContextProvider value={context.componentContext}>
-        <Provider store={context.getStore()}>
-          <App context={context} />
-        </Provider>
-      </ComponentContextProvider>
-    </RouterProvider>
+    <Wrapper context={context}>
+      <App context={context} />
+    </Wrapper>
   );
 
 export default renderer;
