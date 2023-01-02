@@ -17,9 +17,9 @@ export declare type RendererOptions = {
   };
 };
 
-export declare type Renderer = <T extends object = {}>(
-  context: ServerContext<T>,
-  App: ComponentType<{ context: Context<T> }>,
+export declare type Renderer = <S, A>(
+  context: ServerContext<S, A>,
+  App: ComponentType<{ context: Context<S, A> }>,
   options: {
     bundles: Record<string, () => Promise<any>>;
     options: RendererOptions;
@@ -43,7 +43,7 @@ const stingified = (value) =>
 const renderBefore = (head: ServerContext<any>["head"], rootNodeId: string) =>
   `<!DOCTYPE html><html lang="${head.getLang()}">${head}<body><div id="${rootNodeId}">`;
 
-const renderAfter = ({ state, stats }: { stats: object; state: object }) =>
+const renderAfter = <S>({ state, stats }: { stats: object; state: S }) =>
   `</div>
     <script type="text/javascript">
       window.__SERVER_STATS__ = ${stingified(stats)};
@@ -114,7 +114,7 @@ const render = (response, head, stream: NodeJS.ReadableStream, tail) =>
     });
   });
 
-const renderer: Renderer = async <T>(context, App, { bundles, options }) => {
+const renderer: Renderer = async (context, App, { bundles, options }) => {
   if (!chunksUnderstand) {
     chunksUnderstand = loadBundles(bundles).then(() =>
       getStats(options.statsFile)
@@ -149,21 +149,18 @@ const renderer: Renderer = async <T>(context, App, { bundles, options }) => {
       });
     });
 
-  const state = context.getStore().getState() as object;
+  const state = context.getStore().getState();
 
   context.ctx.res.writeHead(error ? Number(route.name) : 200, {
     "Content-Type": "text/html;charset=UTF-8",
   });
+  const props = { context };
 
   return render(
     context.ctx.res,
     renderBefore(context.head, options.rootNodeId || "root"),
     ReactDOMServer.renderToStaticNodeStream(
-      React.createElement(
-        Wrapper,
-        { context },
-        React.createElement(App, { context })
-      )
+      React.createElement(Wrapper, props, React.createElement(App, props))
     ),
     renderAfter({ state, stats: context.stats })
   );

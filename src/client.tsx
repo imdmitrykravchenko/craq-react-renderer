@@ -4,9 +4,9 @@ import { Context } from "craq";
 
 import Wrapper from "./Wrapper";
 
-const renderer = <T extends unknown>(
-  context: Context<T>,
-  App: ComponentType<{ context: Context<T> }>,
+const renderer = <S extends unknown, A extends unknown>(
+  context: Context<S, A>,
+  App: ComponentType<{ context: Context<S, A> }>,
   { node }: { node: HTMLElement }
 ) =>
   ReactDOM.hydrateRoot(
