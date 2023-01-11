@@ -1,6 +1,6 @@
 {
   "name": "craq-react-renderer",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
@@ -9,11 +9,11 @@
   "author": "Dmitry Kravchenko",
   "license": "ISC",
   "dependencies": {
-    "router6-react": "0.0.3"
+    "router6-react": "^0.1.1"
   },
   "peerDependencies": {
-    "craq": "^0.3.5",
-    "craq-server": "^0.4.1",
+    "craq": "^0.4.1",
+    "craq-server": "^0.5.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
