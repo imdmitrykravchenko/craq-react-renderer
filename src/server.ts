@@ -1,5 +1,3 @@
-import fs from "fs";
-
 import React, { ComponentType } from "react";
 import ReactDOMServer from "react-dom/server";
 import { Context } from "craq";
@@ -7,27 +5,10 @@ import { ServerContext } from "craq-server";
 
 import Wrapper from "./Wrapper";
 
-export declare type Chunks = Record<string, string[]>;
-export declare type RendererOptions = {
+type RendererOptions = {
   rootNodeId?: string;
-  assetsPath?: string;
-  statsFile?: {
-    path?: string;
-    content?: Chunks;
-  };
 };
 
-export declare type Renderer = <S, A>(
-  context: ServerContext<S, A>,
-  App: ComponentType<{ context: Context<S, A> }>,
-  options: {
-    bundles: Record<string, () => Promise<any>>;
-    options: RendererOptions;
-  }
-) => Promise<any>;
-
-const loadBundles = (bundles: Record<string, () => Promise<void>>) =>
-  Promise.all(Object.values(bundles).map((bundle) => bundle()));
 const stingified = (value) =>
   `JSON.parse('${JSON.stringify(value)
     .replace(/\\n/g, "\\n")
@@ -39,8 +20,10 @@ const stingified = (value) =>
     .replace(/\\b/g, "\\b")
     .replace(/\\f/g, "\\f")}')`;
 
-// @ts-ignore
-const renderBefore = (head: ServerContext<any>["head"], rootNodeId: string) =>
+const renderBefore = (
+  head: ServerContext<any, any>["head"],
+  rootNodeId: string
+) =>
   `<!DOCTYPE html><html lang="${head.getLang()}">${head}<body><div id="${rootNodeId}">`;
 
 const renderAfter = <S>({ state, stats }: { stats: object; state: S }) =>
@@ -51,52 +34,6 @@ const renderAfter = <S>({ state, stats }: { stats: object; state: S }) =>
     </script>
   </body>
 </html>`;
-
-const hasExt = (ext) => (link) => link.split(".").pop() === ext;
-const isJs = hasExt("js");
-const isCss = hasExt("css");
-
-const usefulChunks = ["vendor", "bundle"];
-const getStaticReducer =
-  (
-    assetsByChunkName: Chunks,
-    pred: (bundle: string) => boolean,
-    additionalChunk?: string
-  ) =>
-  (set: Set<string>, chunkName) =>
-    [
-      ...(assetsByChunkName[additionalChunk] || []).filter(pred),
-      ...(assetsByChunkName[chunkName] || []).filter(pred),
-    ].reduce((result: Set<string>, link: string) => result.add(link), set);
-
-const addAssetsPath = (assetsPath: string, path: string) =>
-  `/${[assetsPath, path].join("/")}`;
-
-const getStats = (statsFile: RendererOptions["statsFile"]): Promise<Chunks> => {
-  if (!statsFile) {
-    return Promise.resolve({});
-  }
-
-  if (statsFile.content) {
-    return Promise.resolve(statsFile.content);
-  }
-
-  console.log("attempt to parse stats.json", statsFile);
-
-  if (fs.existsSync(statsFile.path)) {
-    return Promise.resolve(
-      JSON.parse(fs.readFileSync(statsFile.path).toString())
-    );
-  }
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(getStats(statsFile));
-    }, 2000);
-  });
-};
-
-let chunksUnderstand: Promise<Chunks>;
 
 const render = (response, head, stream: NodeJS.ReadableStream, tail) =>
   new Promise<void>((resolve, reject) => {
@@ -114,56 +51,30 @@ const render = (response, head, stream: NodeJS.ReadableStream, tail) =>
     });
   });
 
-const renderer: Renderer = async (context, App, { bundles, options }) => {
-  if (!chunksUnderstand) {
-    chunksUnderstand = loadBundles(bundles).then(() =>
-      getStats(options.statsFile)
+const getRenderer =
+  <S, A>(
+    App: ComponentType<{ context: Context<S, A> }>,
+    options: RendererOptions
+  ) =>
+  async (
+    context: ServerContext<any, any>,
+    error: (Error & { statusCode: number }) | null
+  ) => {
+    const state = context.getStore().getState();
+
+    context.ctx.res.writeHead(error ? error.statusCode : 200, {
+      "Content-Type": "text/html;charset=UTF-8",
+    });
+    const props = { context };
+
+    return render(
+      context.ctx.res,
+      renderBefore(context.head, options.rootNodeId || "root"),
+      ReactDOMServer.renderToStaticNodeStream(
+        React.createElement(Wrapper, props, React.createElement(App, props))
+      ),
+      renderAfter({ state, stats: context.stats })
     );
-  }
+  };
 
-  const assetsByChunkName = await chunksUnderstand;
-  const route = context.router.currentRoute;
-  const { bundle, error } = route.config;
-
-  usefulChunks
-    .reduce(
-      getStaticReducer(assetsByChunkName, isCss, bundle),
-      new Set<string>()
-    )
-    .forEach((href) => {
-      context.head.addLink({
-        href: addAssetsPath(options.assetsPath, href),
-        rel: "stylesheet",
-      });
-    });
-
-  usefulChunks
-    .reduce(
-      getStaticReducer(assetsByChunkName, isJs, bundle),
-      new Set<string>()
-    )
-    .forEach((src) => {
-      context.head.addScript({
-        src: addAssetsPath(options.assetsPath, src),
-        attributes: { defer: true },
-      });
-    });
-
-  const state = context.getStore().getState();
-
-  context.ctx.res.writeHead(error ? Number(route.name) : 200, {
-    "Content-Type": "text/html;charset=UTF-8",
-  });
-  const props = { context };
-
-  return render(
-    context.ctx.res,
-    renderBefore(context.head, options.rootNodeId || "root"),
-    ReactDOMServer.renderToStaticNodeStream(
-      React.createElement(Wrapper, props, React.createElement(App, props))
-    ),
-    renderAfter({ state, stats: context.stats })
-  );
-};
-
-export default renderer;
+export default getRenderer;
