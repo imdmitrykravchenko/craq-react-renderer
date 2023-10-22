@@ -1,6 +1,6 @@
 {
   "name": "craq-react-renderer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
@@ -12,8 +12,8 @@
     "router6-react": "^0.1.0"
   },
   "peerDependencies": {
-    "craq": "^0.1.0",
-    "craq-server": "^0.1.0",
+    "craq": "^0.2.0",
+    "craq-server": "^0.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
