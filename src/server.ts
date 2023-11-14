@@ -1,5 +1,6 @@
 import React, { ComponentType } from "react";
 import ReactDOMServer from "react-dom/server";
+import jsesc from "jsesc";
 import { Context } from "craq";
 import { ServerContext } from "craq-server";
 
@@ -10,15 +11,9 @@ type RendererOptions = {
 };
 
 const stingified = (value) =>
-  `JSON.parse('${JSON.stringify(value)
-    .replace(/\\n/g, "\\n")
-    .replace(/\\'/g, "\\'")
-    .replace(/\\"/g, '\\"')
-    .replace(/\\&/g, "\\&")
-    .replace(/\\r/g, "\\r")
-    .replace(/\\t/g, "\\t")
-    .replace(/\\b/g, "\\b")
-    .replace(/\\f/g, "\\f")}')`;
+  `JSON.parse(${JSON.stringify(
+    jsesc(value, { json: true, minimal: true, isScriptContext: true })
+  )})`;
 
 const renderBefore = (
   head: ServerContext<any, any>["head"],
